@@ -1,0 +1,21 @@
+# RStudio / R session state
+.Rproj.user/
+.Rhistory
+.Ruserdata
+
+# All R workspaces (main session, checkpoints, results, temp)
+# kept out for size and because they may contain MEPS microdata
+.RData
+*.RData
+.RDataTmp*
+
+# IPUMS MEPS data (restricted — do not redistribute)
+/data/
+*.dat
+*.dat.gz
+*.csv
+*.dta
+
+# Plots
+/plots/*
+!/plots/.gitkeep
