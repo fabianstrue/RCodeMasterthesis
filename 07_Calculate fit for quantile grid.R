@@ -32,7 +32,8 @@ plot_ks_improvement <- function(plot_foulder, file, subgroup_list, labels, title
   colors <- rainbow(length(subgroup_list))
   ylim   <- range(sapply(subgroup_list, function(d) d$improvement))
   
-  pdf(file = file.path(plot_foulder, file), width = 9, height = 6)
+  pdf(file = file.path(plot_foulder, sub("\\.pdf$", paste0("_", first_stage_mode,".pdf"), file)),
+      width = 9, height = 6)
   plot(thresholds, subgroup_list[[1]]$improvement,
        type = "l", lwd = 2, col = colors[1],
        xlab = "sqrt(Total Expenditure)",
@@ -49,7 +50,8 @@ plot_ks_improvement <- function(plot_foulder, file, subgroup_list, labels, title
 
 plot_cdf_empirical <- function(plot_foulder, file, x, y_noIV, y_IV, y_emp, title,
                                ylab = "Estimated CDF", ylim = c(0, 1)) {
-  pdf(file = file.path(plot_foulder, file), width = 9, height = 6)
+  pdf(file = file.path(plot_foulder, sub("\\.pdf$", paste0("_", first_stage_mode,".pdf"), file)),
+      width = 9, height = 6)
   plot(x, y_emp, lwd = 2, type = "l", col = "grey50", lty = 3,
        xlab = "sqrt(Total Expenditure)", ylab = ylab, ylim = ylim, main = title,
        cex = 1.5, cex.axis = 1.5, cex.lab = 1.5, cex.main = 1.5)

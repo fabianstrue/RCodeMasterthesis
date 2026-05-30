@@ -62,8 +62,8 @@ compute_profile_cdfs <- function(profiles, base_means, betahatsnonIV, betahatsIV
   for (p in profiles) {
     eval_pt <- make_profile(base_means, p$overrides)
     
-    cdf_un  <- compute_cdf(0, betahatsnonIV, betahatsIV, eval_pt, Y2hat, n_ctrl)
-    cdf_ins <- compute_cdf(1, betahatsnonIV, betahatsIV, eval_pt, Y2hat, n_ctrl)
+    cdf_un  <- compute_cdf(0, betahatsnonIV, betahatsIV, eval_pt, Y2hat, n_ctrl, model_df[[weight_var]])
+    cdf_ins <- compute_cdf(1, betahatsnonIV, betahatsIV, eval_pt, Y2hat, n_ctrl, model_df[[weight_var]])
     
     # Isotonic regression for monotonicity
     iso_un_noIV  <- isoreg(thresholds, cdf_un$nonIV)
@@ -108,7 +108,8 @@ res_combined <- compute_profile_cdfs(profiles_combined, eval_means, betahatsnonI
 plot_profile_cdf <- function(file, res, thresholds, iv = TRUE, main_prefix = "") {
   n_profiles <- length(res)
   
-  pdf(file = file.path(plot_dir, file), width = 9, height = 5 * n_profiles)
+  pdf(file = file.path(plot_dir, sub("\\.pdf$", paste0("_", first_stage_mode,".pdf"), file)),
+      width = 9, height = 5 * n_profiles)
   par(mfrow = c(n_profiles, 1), mar = c(5, 5, 4, 2))
   
   for (r in res) {
@@ -139,7 +140,8 @@ plot_profile_diff <- function(file, res, thresholds, iv = TRUE,
                               main_prefix = "", ylim = c(-0.5, 0.3)) {
   n_profiles <- length(res)
   
-  pdf(file = file.path(plot_dir, file), width = 9, height = 5 * n_profiles)
+  pdf(file = file.path(plot_dir, sub("\\.pdf$", paste0("_", first_stage_mode,".pdf"), file)),
+      width = 9, height = 5 * n_profiles)
   par(mfrow = c(n_profiles, 1), mar = c(5, 5, 4, 2))
   
   for (r in res) {
@@ -168,7 +170,8 @@ plot_profiles_overlay <- function(file, res, thresholds, iv = TRUE, insured = TR
   n_profiles <- length(res)
   if (is.null(colors)) colors <- rainbow(n_profiles)
   
-  pdf(file = file.path(plot_dir, file), width = 9, height = 6)
+  pdf(file = file.path(plot_dir, sub("\\.pdf$", paste0("_", first_stage_mode,".pdf"), file)),
+      width = 9, height = 6)
   
   first <- TRUE
   for (i in seq_along(res)) {
@@ -200,7 +203,8 @@ plot_iv_comparison <- function(file, res, thresholds, insured = TRUE,
   n_profiles <- length(res)
   ins_label <- if (insured) "Insured" else "Uninsured"
   
-  pdf(file = file.path(plot_dir, file), width = 9, height = 5 * n_profiles)
+  pdf(file = file.path(plot_dir, sub("\\.pdf$", paste0("_", first_stage_mode,".pdf"), file)),
+      width = 9, height = 5 * n_profiles)
   par(mfrow = c(n_profiles, 1), mar = c(5, 5, 4, 2))
   
   for (r in res) {
@@ -227,7 +231,8 @@ plot_iv_comparison <- function(file, res, thresholds, insured = TRUE,
 # Plot D2: Compare IV and Non-IV on one plot with all variables fixed at the mean
 plot_iv_comparison_single <- function(file, iso_iv, iso_noiv, thresholds,
                                       main = "") {
-  pdf(file = file.path(plot_dir, file), width = 9, height = 6)
+  pdf(file = file.path(plot_dir, sub("\\.pdf$", paste0("_", first_stage_mode,".pdf"), file)),
+      width = 9, height = 6)
   plot(thresholds, iso_noiv$yf, lwd = 2, type = "l", col = "black",
        xlab = "sqrt(Total Expenditure)", ylab = "Estimated CDF",
        ylim = c(0, 1), main = main,
@@ -343,3 +348,4 @@ save(res_age, res_inc, res_sex, res_combined,
 cat("\n=== All quantile grid plots saved to:", plot_dir, "===\n")
 
 rm(inc, age)
+

@@ -263,8 +263,7 @@ cat("Number of thresholds:", n_thresholds, "\n")
 probit_res <- run_probit_loop(model_df, Y2hat, thresholds,
                               probit_formula_noIV, probit_formula_IV,
                               n_coef_noIV, n_coef_IV, weight_var = weight_var)
-# betahatsnonIV = probit coefficients at threshold i (without IV)
-# betahatsIV   = probit coefficients at threshold i (with IV/control function)
+
 betahatsnonIV <- probit_res$noIV
 betahatsIV   <- probit_res$IV
 
