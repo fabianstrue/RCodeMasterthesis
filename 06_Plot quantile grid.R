@@ -245,7 +245,7 @@ plot_iv_comparison_single <- function(file, iso_iv, iso_noiv, thresholds,
 
 # ── Generate all plots ────────────────────────────────────────────────────────
 
-plot_iv_comparison_single(paste0("IVcomp_Insured_", first_stage_mode, ".pdf"),
+plot_iv_comparison_single("IVcomp_Insured.pdf",
                           iso_ins_IV, iso_ins_noIV, thresholds,
                           "Insured: IV vs Non-IV")
 
