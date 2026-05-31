@@ -2,7 +2,10 @@ library(dplyr)
 
 #kids = filter(data_cll, AGE <= 16) %>% select(-STUDENT, -HIDEG, -HEALTH, -EMPSTAT, -CHOEMINS, -NUMEMPS, -EHICOV, -EMPHICOV)
 
-regular = filter(data_cll, between(AGE, 17, 64))
+regular = data_cll %>% 
+  filter(between(AGE, 17, 64)) %>%
+  filter(EMPSTAT != "NIU") %>%
+  filter(!is.na(NUMEMPS))
 
 #elderly = filter(data_cll, AGE >= 65)
 

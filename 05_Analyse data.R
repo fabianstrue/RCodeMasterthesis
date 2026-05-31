@@ -25,7 +25,7 @@ endogen          <- "INSSHR"
 instrument       <- "NUMEMPS"
 target           <- "EXPTOT"
 t_transform      <- "sqrt"
-first_stage_mode <- "Probit"   # "OLS" or "Probit"
+first_stage_mode <- "OLS"   # "OLS" or "Probit"
 weight_var       <- "PERWEIGHT"
 weight_rescaling <- TRUE
 n_thresholds     <- 500
@@ -38,9 +38,7 @@ set.seed(12)
 # Data preparation
 # ══════════════════════════════════════════════════════════════════════════════
 
-df = regular %>%
-  filter(EMPSTAT != "NIU") %>%
-  filter(!is.na(NUMEMPS))
+df = regular
 df$SEX     <- ifelse(df$SEX     == "Male",     1, 0)  # 1 = Male,     0 = Female
 df$STUDENT <- ifelse(df$STUDENT == "Student",  1, 0)  # 1 = Student,  0 = Not student
 df$EMPSTAT <- ifelse(df$EMPSTAT == "Employed", 1, 0)  # 1 = Employed, 0 = Unemployed
@@ -428,3 +426,4 @@ plot_diff(paste0("Plot_Difference_IV_uniCI_", first_stage_mode, ".pdf"),
 
 
 rm(u, b, Y2hat_b, dfBS, rear_un_noIV, rear_un_IV, rear_ins_noIV, rear_ins_IV)
+
