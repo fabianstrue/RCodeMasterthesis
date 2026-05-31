@@ -89,7 +89,7 @@ concentration_shares <- function(x, w = NULL,
 plot_concentration  <- function(x, w = NULL,
                                  cutoffs = c(0.01, 0.05, 0.10, 0.25, 0.50),
                                  main   = "",
-                                 labels = c("Population", "Health expenditures"),
+                                 labels = c("Population", "Health\nexpenditures"),
                                  cols   = c("#08306b","#2171b5","#4292c6",
                                             "#6baed6","#9ecae1","#deebf7"),
                                  legend = FALSE) {
@@ -98,10 +98,10 @@ plot_concentration  <- function(x, w = NULL,
   popb <- c(0, cutoffs, 1) * 100
   spnb <- c(0, sh,      1) * 100
   nseg <- length(popb) - 1
-  xl <- 1.0; xr <- 2.5; bw <- 0.3
+  xl <- 1.0; xr <- 2.2; bw <- 0.3
   
   plot(NA, xlim = c(0.4, 3.2), ylim = c(0, 100),
-       xlab = "", ylab = "Percentage", axes = FALSE, main = main)
+       xlab = "", ylab = "Percentage", axes = FALSE, main = "")
   axis(2, seq(0, 100, 10), paste0(seq(0, 100, 10), "%"), las = 1)
   axis(1, c(xl, xr), labels, tick = FALSE)
   
@@ -111,17 +111,16 @@ plot_concentration  <- function(x, w = NULL,
     rect(xl - bw, popb[i], xl + bw, popb[i + 1], col = cols[i], border = "gray50")
     rect(xr - bw, spnb[i], xr + bw, spnb[i + 1], col = cols[i], border = "gray50")
   }
-  text(xl - bw - 0.04, cutoffs * 100, sprintf("%g%%", cutoffs * 100),
-       pos = 2, cex = .75)
-#  text(xr - bw - 0.04, sh * 100, sprintf("%.1f%%", sh * 100),     # shares, left of right bar
-#       pos = 2, cex = .7)
+  mtext(main, side = 3, line = 1, at = (xl + xr) / 2, cex = 0.9, font = 2)
+  text(xl - bw + 0.01, cutoffs * 100, sprintf("%g%%", cutoffs * 100),
+       pos = 2, cex = .7)
   text(xr, sh * 100-2, sprintf("%.1f%%", sh * 100), cex = .7, col="white")     # shares, in right bar
   mids <- (spnb[-length(spnb)] + spnb[-1]) / 2          # segment centres
-  text(xr + bw + 0.04, mids[seq_along(mn)],             # dollars, mid-segment
+  text(xr + bw - 0.01, mids[seq_along(mn)],             # dollars, mid-segment
        sprintf("$%s", formatC(round(mn), format = "d", big.mark = ",")),
        pos = 4, cex = .7)
   if (legend)
-    legend("topleft", bty = "n", cex = .75, fill = cols,
+    legend("bottom", bty = "n", cex = .75, fill = cols,
            legend = c("Top 1%","Top 5%","Top 10%","Top 25%","Top 50%","Bottom 50%"))
   invisible(setNames(sh, paste0("top", cutoffs * 100)))
 }
@@ -129,9 +128,30 @@ plot_concentration  <- function(x, w = NULL,
 d <- regular %>%
   select(EXPTOT, PERWEIGHT, INSSHR)
 
-pdf(file.path(plot_dir, "concentration.pdf"), width = 10, height = 5.)   # = \textwidth
+pdf(file.path(plot_dir, "concentration_ABC.pdf"), width = 12, height = 5.)   # = \textwidth
 par(mfrow = c(1, 3), mar = c(3, 4, 4, 0.25))
 plot_concentration(d$EXPTOT,                d$PERWEIGHT,                main = "All")
+plot_concentration(d$EXPTOT[d$INSSHR == 1], d$PERWEIGHT[d$INSSHR == 1], main = "Insured")
+plot_concentration(d$EXPTOT[d$INSSHR == 0], d$PERWEIGHT[d$INSSHR == 0], main = "Uninsured")
+dev.off()
+
+pdf(file.path(plot_dir, "concentration_A.pdf"), width = 4, height = 5.)   # = \textwidth
+par(mfrow = c(1, 1), mar = c(3, 4, 4, 1))
+plot_concentration(d$EXPTOT,                d$PERWEIGHT,                main = "All")
+dev.off()
+
+pdf(file.path(plot_dir, "concentration_B.pdf"), width = 4, height = 5.)   # = \textwidth
+par(mfrow = c(1, 1), mar = c(3, 4, 4, 1))
+plot_concentration(d$EXPTOT[d$INSSHR == 1], d$PERWEIGHT[d$INSSHR == 1], main = "Insured")
+dev.off()
+
+pdf(file.path(plot_dir, "concentration_C.pdf"), width = 4, height = 5.)   # = \textwidth
+par(mfrow = c(1, 1), mar = c(3, 4, 4, 1))
+plot_concentration(d$EXPTOT[d$INSSHR == 0], d$PERWEIGHT[d$INSSHR == 0], main = "Uninsured")
+dev.off()
+
+pdf(file.path(plot_dir, "concentration_BC.pdf"), width = 8, height = 5.)   # = \textwidth
+par(mfrow = c(1, 2), mar = c(3, 4, 4, 0.25))
 plot_concentration(d$EXPTOT[d$INSSHR == 1], d$PERWEIGHT[d$INSSHR == 1], main = "Insured")
 plot_concentration(d$EXPTOT[d$INSSHR == 0], d$PERWEIGHT[d$INSSHR == 0], main = "Uninsured")
 dev.off()
