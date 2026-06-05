@@ -25,7 +25,7 @@ data_wide2 = data_wide %>%
 
 regular_full = data_wide2 %>%
   svydesign(ids = ~1, weights = ~PERWEIGHT, data = .)
-svymean(~AGE + factor(SEX) + INCTOT + EXPTOT + EDUCYR + NDUIDMBRS + STUDENT, regular_full)
+svymean(~AGE + factor(SEX) + INCTOT + EXPTOT + EDUCYR + NDUIDMBRS + STUDENT + INSSHR, regular_full)
 svymean(~EMPSTAT, regular_full, na.rm = TRUE)
 
 
@@ -34,7 +34,7 @@ regular_cleaned = data_cll %>%
   filter(EMPSTAT != "NIU") %>%
   filter(!is.na(NUMEMPS)) %>%
   svydesign(ids = ~1, weights = ~PERWEIGHT, data = .)
-svymean(~AGE + factor(SEX) + INCTOT + EXPTOT + EDUCYR + NDUIDMBRS + STUDENT + EMPSTAT, regular_cleaned)
+svymean(~AGE + factor(SEX) + INCTOT + EXPTOT + EDUCYR + NDUIDMBRS + STUDENT + EMPSTAT + INSSHR, regular_cleaned)
 
 rm(regular_full, regular_cleaned)
 

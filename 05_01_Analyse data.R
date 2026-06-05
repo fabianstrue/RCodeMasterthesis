@@ -25,7 +25,7 @@ endogen          <- "INSSHR"
 instrument       <- "NUMEMPS"
 target           <- "EXPTOT"
 t_transform      <- "sqrt"
-first_stage_mode <- "OLS"   # "OLS" or "Probit"
+first_stage_mode <- "Probit"   # "OLS" or "Probit"
 weight_var       <- "PERWEIGHT"
 weight_rescaling <- TRUE
 n_thresholds     <- 500
