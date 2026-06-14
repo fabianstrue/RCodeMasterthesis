@@ -7,12 +7,11 @@ data_cl = data %>%
   filter(AGE != 996) %>%
   filter(STUDENT != 7) %>%
   filter(!EDUCYR %in% c(97, 98, 99)) %>%
-  filter(HEALTH != 8) %>% # maybe remove HEALTH many NIU
   filter(!EMPSTATRD %in% c(9, 8, 7)) %>%
-  filter(!CHOEMINSRD %in% c(4, 7, 8, 9)) %>%
+  #filter(!CHOEMINSRD %in% c(4, 7, 8, 9)) %>%
   filter(!NUMEMPSRD %in% c(994, 997, 998, 999)) %>%
-  filter(!EHICOVRD %in% c(7, 8, 9)) %>%
-  filter(!EMPHICOVRD %in% c(7, 8, 9)) %>%
+  #filter(!EHICOVRD %in% c(7, 8, 9)) %>%
+  #filter(!EMPHICOVRD %in% c(7, 8, 9)) %>%
   filter(STUDENT != 9) %>%
   mutate(STUDENT = replace(STUDENT, STUDENT == 6, 3),
          STUDENT = factor(
