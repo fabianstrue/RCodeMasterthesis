@@ -2,6 +2,9 @@ library(ggplot2)
 library(patchwork)
 library(survey)
 
+setwd("C:/Users/fabia/Documents/#Köln/Uni/Masterarbeit/RCodeMasterthesis")
+plot_dir <- file.path(getwd(), "plots")
+
 # create survey data
 data_wide = data %>%
   pivot_wider(
@@ -83,25 +86,28 @@ round(abs(c(smd_cont, smd_bin)), 3)
 
 table(regular_full$variables$EDUCYR)
 
-# Density
+# Density plots
 plot_df <- rbind(
   data.frame(EDUCYR = regular_full$variables$EDUCYR,
              INCTOT = regular_full$variables$INCTOT,
-             EXPTOT = regular_full$variables$EXPTOT,
+             AGE = regular_full$variables$AGE,
+             NDUIDMBRS =  regular_full$variables$NDUIDMBRS,
              w      = weights(regular_full),
              source = "Full distribution"),
   data.frame(EDUCYR = regular_cleaned$variables$EDUCYR,
              INCTOT = regular_cleaned$variables$INCTOT,
-             EXPTOT = regular_cleaned$variables$EXPTOT,
+             AGE = regular_cleaned$variables$AGE,
+             NDUIDMBRS = regular_cleaned$variables$NDUIDMBRS,
              w      = weights(regular_cleaned),
              source = "Analytical sample")
 )
 
-ggplot(plot_df, aes(x = INCTOT, fill = source, weight = w)) +
+ggplot(plot_df, aes(x = NDUIDMBRS, fill = source, weight = w)) +
   geom_density(alpha = 0.2, colour = "black", linewidth = 0.3, na.rm = TRUE) +
-  coord_cartesian(xlim = c(0, 250000)) +
+  #coord_cartesian(xlim = c(0, 250000)) +
   scale_fill_manual(values = c("Full distribution" = "green",
                                "Analytical sample" = "red")) +
-  labs(x = "Years of education", y = "Density",
-       fill = NULL, title = "EDUCYR: full vs. analytical sample") +
+  labs(x = "Number of Household Members", y = "Density",
+       fill = NULL, title = "AGE: full vs. analytical sample") +
   theme_minimal()
+ggsave(file.path(plot_dir, "Descriptives/NDUIDMBRS_density.pdf"), width = 8, height = 6, units = "in")
