@@ -3,6 +3,7 @@ library(ggplot2)
 library(ggrastr)
 library(poweRlaw)
 library(dplyr)
+library(survey)
 
 setwd("C:/Users/fabia/Documents/#Köln/Uni/Masterarbeit/RCodeMasterthesis")
 plot_dir <- file.path(getwd(), "plots")
@@ -27,59 +28,6 @@ bind_rows(
 ## Table of most common Spending amounts
 head(sort(table(df_des$EXPTOT), decreasing = TRUE), 25)
 
-## Create a log-rank-log plot to check if the distribution could be Pareto 
-df_pareto = tibble(expenses = df_des$EXPTOT, insurance = df_des$INSSHR) %>%
-  mutate(expenses = if_else(expenses == 0, 1, expenses)) %>%
-  group_by(insurance) %>%
-  arrange(desc(expenses), .by_group = TRUE) %>%
-  mutate(
-    rank = row_number(),
-    log_expenses = log(expenses),
-    log_rank = log(rank)
-  ) %>%
-  ungroup() %>%
-  mutate(
-    insurance = factor(
-      insurance,
-      levels = c(0, 1),
-      labels = c("Uninsured", "Insured")
-    )
-  )
-
-ggplot(df_pareto, aes(x=log_expenses, y=log_rank, colour=insurance)) +
-  geom_point(alpha = 0.3, size = 0.5) +
-  labs(x="log Spending", y="log Rank", colour="Insurance Status",
-       title="Log-Rank-Log Plot of Medical Spending") +
-  theme_minimal()
-ggsave(file.path(plot_dir, "Descriptives/pareto_full.pdf"), width = 6, height = 4)
-
-# Neither curve shows a linear segment in the log-rank-log-size plot, suggesting the distribution is not clearly Pareto — more consistent with log-normal behavior
-# Both curves remain concave throughout, meaning OLS-based inference on the conditional mean is likely insufficient to capture the full distributional differences between groups
-# Zero-expenditure observations recoded to $1 prior to log transformation to preserve non-utilisers in the plot
-# Uninsured individuals show a pronounced mass at x=0, indicating a higher rate of non-utilization (extensive margin)
-# Insured individuals have substantially higher maximum spending, with the tail extending further right
-# The conditional spending distribution of insured individuals is shifted rightward, suggesting higher spending
-
-ggplot(df_pareto, aes(x=log_expenses, y=log_rank, colour =insurance)) +
-  geom_point(alpha = 0.3, size = 0.5) +
-  labs(x="log Spending", y="log Rank", colour="Insurance Status",
-       title="Log-Rank-Log Plot of Medical Spending") +
-  theme_minimal() + 
-  xlim(8, NA)
-# Save as high-res PNG
-ggsave(file.path(plot_dir, "Descriptives/pareto_crop.pdf"), width = 6, height = 4, dpi = 300)
-
-
-# Although the tail begins to look almost straight in the end
-df_pareto_tail = df_des %>%
-  mutate(EXPTOT=ifelse(EXPTOT==0, 1, EXPTOT)) %>%
-  select(EXPTOT)
-
-m <- conpl$new(df_pareto_tail$EXPTOT)
-est <- estimate_xmin(m, xmax=max(df_pareto_tail$EXPTOT))
-m$setXmin(est)
-estimate_pars(m)
-
 ## Create spending plots
 
 # Cumulative spending share held by the top `cutoffs` of the pop
@@ -99,12 +47,12 @@ concentration_shares <- function(x, w = NULL,
 }
 
 plot_concentration  <- function(x, w = NULL,
-                                 cutoffs = c(0.01, 0.05, 0.10, 0.25, 0.50),
-                                 main   = "",
-                                 labels = c("Population", "Health\nexpenditures"),
-                                 cols   = c("#08306b","#2171b5","#4292c6",
-                                            "#6baed6","#9ecae1","#deebf7"),
-                                 legend = FALSE) {
+                                cutoffs = c(0.01, 0.05, 0.10, 0.25, 0.50),
+                                main   = "",
+                                labels = c("Population", "Health\nexpenditures"),
+                                cols   = c("#08306b","#2171b5","#4292c6",
+                                           "#6baed6","#9ecae1","#deebf7"),
+                                legend = FALSE) {
   cs   <- concentration_shares(x, w, cutoffs)
   sh   <- cs$shares; mn <- cs$means
   popb <- c(0, cutoffs, 1) * 100
@@ -168,3 +116,89 @@ plot_concentration(d$EXPTOT[d$INSSHR == 0], d$PERWEIGHT[d$INSSHR == 0], main = "
 dev.off()
 
 rm(d)
+
+## Sample-composition table
+# continuous: weighted means by insurance status
+bind_rows(
+  df_des %>%
+    group_by(INSSHR = as.character(INSSHR)) %>%
+    summarise(AGE = weighted.mean(AGE, PERWEIGHT),
+              EDUCYR = weighted.mean(EDUCYR, PERWEIGHT),
+              NDUIDMBRS = weighted.mean(NDUIDMBRS, PERWEIGHT),
+              STUDENT = weighted.mean(STUDENT == "Student", PERWEIGHT),
+              MALE = weighted.mean(SEX == "Male", PERWEIGHT),
+              EMPLOYED = weighted.mean(EMPSTAT == "Employed", PERWEIGHT),
+              n = n()),
+  
+  df_des %>%
+    summarise(INSSHR = "Total",
+              AGE = weighted.mean(AGE, PERWEIGHT),
+              EDUCYR = weighted.mean(EDUCYR, PERWEIGHT),
+              NDUIDMBRS = weighted.mean(NDUIDMBRS, PERWEIGHT),
+              STUDENT = weighted.mean(STUDENT == "Student", PERWEIGHT),
+              MALE = weighted.mean(SEX == "Male", PERWEIGHT),
+              EMPLOYED = weighted.mean(EMPSTAT == "Employed", PERWEIGHT),
+              n = n())
+)
+
+# weighted median for INCTOT
+options(survey.lonely.psu = "adjust")
+svy_des <- svydesign(ids = ~1, weights = ~PERWEIGHT, data = df_des)
+svyby(~INCTOT, ~INSSHR, svy_des, svyquantile, quantiles = 0.5,
+      qrule = "hf8")
+svyquantile(~INCTOT, svy_des, quantiles = 0.5, ci = FALSE, qrule = "hf8")$INCTOT
+
+## Create a log-rank-log plot to check if the distribution could be Pareto 
+df_pareto = tibble(expenses = df_des$EXPTOT, insurance = df_des$INSSHR) %>%
+  mutate(expenses = if_else(expenses == 0, 1, expenses)) %>%
+  group_by(insurance) %>%
+  arrange(desc(expenses), .by_group = TRUE) %>%
+  mutate(
+    rank = row_number(),
+    log_expenses = log(expenses),
+    log_rank = log(rank)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    insurance = factor(
+      insurance,
+      levels = c(0, 1),
+      labels = c("Uninsured", "Insured")
+    )
+  )
+
+ggplot(df_pareto, aes(x=log_expenses, y=log_rank, colour=insurance)) +
+  geom_point(alpha = 0.3, size = 0.5) +
+  labs(x="log Spending", y="log Rank", colour="Insurance Status",
+       title="Log-Rank-Log Plot of Medical Spending") +
+  theme_minimal()
+ggsave(file.path(plot_dir, "Descriptives/pareto_full.pdf"), width = 6, height = 4)
+
+# Neither curve shows a linear segment in the log-rank-log-size plot, suggesting the distribution is not clearly Pareto — more consistent with log-normal behavior
+# Both curves remain concave throughout, meaning OLS-based inference on the conditional mean is likely insufficient to capture the full distributional differences between groups
+# Zero-expenditure observations recoded to $1 prior to log transformation to preserve non-utilisers in the plot
+# Uninsured individuals show a pronounced mass at x=0, indicating a higher rate of non-utilization (extensive margin)
+# Insured individuals have substantially higher maximum spending, with the tail extending further right
+# The conditional spending distribution of insured individuals is shifted rightward, suggesting higher spending
+
+ggplot(df_pareto, aes(x=log_expenses, y=log_rank, colour =insurance)) +
+  geom_point(alpha = 0.3, size = 0.5) +
+  labs(x="log Spending", y="log Rank", colour="Insurance Status",
+       title="Log-Rank-Log Plot of Medical Spending") +
+  theme_minimal() + 
+  xlim(8, NA)
+# Save as high-res PNG
+ggsave(file.path(plot_dir, "Descriptives/pareto_crop.pdf"), width = 6, height = 4, dpi = 300)
+
+
+# Although the tail begins to look almost straight in the end
+df_pareto_tail = df_des %>%
+  mutate(EXPTOT=ifelse(EXPTOT==0, 1, EXPTOT)) %>%
+  select(EXPTOT)
+
+m <- conpl$new(df_pareto_tail$EXPTOT)
+est <- estimate_xmin(m, xmax=max(df_pareto_tail$EXPTOT))
+m$setXmin(est)
+estimate_pars(m)
+
+
