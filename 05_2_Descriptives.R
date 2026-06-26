@@ -128,8 +128,6 @@ plot_concentration  <- function(x, w = NULL,
        pos = 2, cex = .7)
   text(xr, sh * 100-2, sprintf("%.1f%%", sh * 100), cex = .7, col="white")     # shares, in right bar
   text(xr + bw - 0.01, sh * 100-2,      # dollars, top-right of segment
-  #mids <- (spnb[-length(spnb)] + spnb[-1]) / 2          # segment centers
-  #text(xr + bw - 0.01, mids[seq_along(mn)],             # dollars, mid-segment
        sprintf("$%s", formatC(round(mn), format = "d", big.mark = ",")),
        pos = 4, cex = .7)
   if (legend)
