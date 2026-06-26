@@ -148,7 +148,20 @@ svyby(~INCTOT, ~INSSHR, svy_des, svyquantile, quantiles = 0.5,
       qrule = "hf8")
 svyquantile(~INCTOT, svy_des, quantiles = 0.5, ci = FALSE, qrule = "hf8")$INCTOT
 
-## Create a log-rank-log plot to check if the distribution could be Pareto 
+## Firm size bis comparing the share of insured across them.
+svy_des <- update(svy_des,
+                  firm_bin = cut(NUMEMPS,
+                                 breaks = c(0, 1, 10, 50, 150, 500, Inf),
+                                 right  = FALSE,
+                                 labels = c("Unemployed", "<10","10-49","50-149","150-499","500+")))
+
+svyby(~INSSHR, ~firm_bin, svy_des, svymean)
+
+# Proportion of population in each bin
+prop.table(svytable(~firm_bin, svy_des))
+table(svy_des$variables$firm_bin)
+
+  ## Create a log-rank-log plot to check if the distribution could be Pareto 
 df_pareto = tibble(expenses = df_des$EXPTOT, insurance = df_des$INSSHR) %>%
   mutate(expenses = if_else(expenses == 0, 1, expenses)) %>%
   group_by(insurance) %>%
