@@ -20,4 +20,4 @@ data_cl = data %>%
          )) %>% # NIU seen as no students
   mutate(EMPSTATRD = replace(EMPSTATRD, EMPSTATRD %in% c(2, 3), 1))
 
-#rm(data)
+rm(data)

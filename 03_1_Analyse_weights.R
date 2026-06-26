@@ -107,7 +107,7 @@ ggplot(plot_df, aes(x = NDUIDMBRS, fill = source, weight = w)) +
   #coord_cartesian(xlim = c(0, 250000)) +
   scale_fill_manual(values = c("Full distribution" = "green",
                                "Analytical sample" = "red")) +
-  labs(x = "Number of Household Members", y = "Density",
+  labs(x = "Number of Dwelling Unit Members", y = "Density",
        fill = NULL, title = "AGE: full vs. analytical sample") +
   theme_minimal()
 ggsave(file.path(plot_dir, "Descriptives/NDUIDMBRS_density.pdf"), width = 8, height = 6, units = "in")
