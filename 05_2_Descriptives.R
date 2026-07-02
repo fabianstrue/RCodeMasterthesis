@@ -29,7 +29,6 @@ bind_rows(
 head(sort(table(df_des$EXPTOT), decreasing = TRUE), 25)
 
 ## Create spending plots
-
 # Cumulative spending share held by the top `cutoffs` of the pop
 concentration_shares <- function(x, w = NULL,
                                  cutoffs = c(0.01, 0.05, 0.10, 0.25, 0.50)) {
@@ -87,29 +86,29 @@ plot_concentration  <- function(x, w = NULL,
 d <- regular %>%
   select(EXPTOT, PERWEIGHT, INSSHR)
 
-pdf(file.path(plot_dir, "Descriptives/concentration_ABC.pdf"), width = 12, height = 5.)   # = \textwidth
+pdf(file.path(plot_dir, "Descriptives/concentration_ABC.pdf"), width = 12, height = 5.)
 par(mfrow = c(1, 3), mar = c(3, 4, 4, 0.25))
 plot_concentration(d$EXPTOT,                d$PERWEIGHT,                main = "All")
 plot_concentration(d$EXPTOT[d$INSSHR == 1], d$PERWEIGHT[d$INSSHR == 1], main = "Insured")
 plot_concentration(d$EXPTOT[d$INSSHR == 0], d$PERWEIGHT[d$INSSHR == 0], main = "Uninsured")
 dev.off()
 
-pdf(file.path(plot_dir, "Descriptives/concentration_A.pdf"), width = 4, height = 5.)   # = \textwidth
+pdf(file.path(plot_dir, "Descriptives/concentration_A.pdf"), width = 4, height = 5.)
 par(mfrow = c(1, 1), mar = c(3, 4, 4, 1))
 plot_concentration(d$EXPTOT,                d$PERWEIGHT,                main = "All")
 dev.off()
 
-pdf(file.path(plot_dir, "Descriptives/concentration_B.pdf"), width = 4, height = 5.)   # = \textwidth
+pdf(file.path(plot_dir, "Descriptives/concentration_B.pdf"), width = 4, height = 5.)
 par(mfrow = c(1, 1), mar = c(3, 4, 4, 1))
 plot_concentration(d$EXPTOT[d$INSSHR == 1], d$PERWEIGHT[d$INSSHR == 1], main = "Insured")
 dev.off()
 
-pdf(file.path(plot_dir, "Descriptives/concentration_C.pdf"), width = 4, height = 5.)   # = \textwidth
+pdf(file.path(plot_dir, "Descriptives/concentration_C.pdf"), width = 4, height = 5.)
 par(mfrow = c(1, 1), mar = c(3, 4, 4, 1))
 plot_concentration(d$EXPTOT[d$INSSHR == 0], d$PERWEIGHT[d$INSSHR == 0], main = "Uninsured")
 dev.off()
 
-pdf(file.path(plot_dir, "Descriptives/concentration_BC.pdf"), width = 8, height = 5.)   # = \textwidth
+pdf(file.path(plot_dir, "Descriptives/concentration_BC.pdf"), width = 8, height = 5.)
 par(mfrow = c(1, 2), mar = c(3, 4, 4, 0.25))
 plot_concentration(d$EXPTOT[d$INSSHR == 1], d$PERWEIGHT[d$INSSHR == 1], main = "Insured")
 plot_concentration(d$EXPTOT[d$INSSHR == 0], d$PERWEIGHT[d$INSSHR == 0], main = "Uninsured")
@@ -155,13 +154,34 @@ svy_des <- update(svy_des,
                                  right  = FALSE,
                                  labels = c("Unemployed", "<10","10-49","50-149","150-499","500+")))
 
-svyby(~INSSHR, ~firm_bin, svy_des, svymean)
+svyby(~INSSHR + EXPTOT, ~firm_bin, svy_des, svymean)
 
 # Proportion of population in each bin
 prop.table(svytable(~firm_bin, svy_des))
 table(svy_des$variables$firm_bin)
 
-  ## Create a log-rank-log plot to check if the distribution could be Pareto 
+# Emphirical cdf
+ecdf_df <- df_des %>%
+  filter(is.finite(EXPTOT), is.finite(PERWEIGHT), PERWEIGHT > 0) %>%
+  mutate(insurance = factor(INSSHR, levels = c(0, 1),
+                            labels = c("Uninsured", "Insured"))) %>%
+  group_by(insurance) %>%
+  arrange(EXPTOT, .by_group = TRUE) %>%
+  mutate(cw = cumsum(PERWEIGHT) / sum(PERWEIGHT)) %>%
+  group_by(insurance, EXPTOT) %>%
+  summarise(F = max(cw), .groups = "drop")
+
+ggplot(ecdf_df, aes(x = EXPTOT, y = F, colour = insurance)) +
+  geom_step(direction = "hv") +
+  scale_x_sqrt(labels = scales::dollar) +
+  coord_cartesian(xlim = c(0, 200000),
+                  ylim = c(0, 1)) +
+  labs(x = "Total medical spending", y = "Empirical CDF",
+       colour = "Insurance status") +
+  theme_minimal()
+ggsave(file.path(plot_dir, "Descriptives/empirical_cdf.pdf"), width = 6, height = 4)
+
+## Create a log-rank-log plot to check if the distribution could be Pareto 
 df_pareto = tibble(expenses = df_des$EXPTOT, insurance = df_des$INSSHR) %>%
   mutate(expenses = if_else(expenses == 0, 1, expenses)) %>%
   group_by(insurance) %>%
