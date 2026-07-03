@@ -154,7 +154,12 @@ svy_des <- update(svy_des,
                                  right  = FALSE,
                                  labels = c("Unemployed", "<10","10-49","50-149","150-499","500+")))
 
-svyby(~INSSHR + EXPTOT, ~firm_bin, svy_des, svymean)
+# Mean of INSSHR by bin
+svyby(~INSSHR, ~firm_bin, svy_des, svymean)
+
+# Median of EXPTOT by bin
+svyby(~EXPTOT, ~firm_bin, svy_des, svyquantile,
+               quantiles = 0.5, ci = TRUE)
 
 # Proportion of population in each bin
 prop.table(svytable(~firm_bin, svy_des))
