@@ -10,14 +10,10 @@ setwd("C:/Users/fabia/Documents/#Köln/Uni/Masterarbeit/RCodeMasterthesis")
 
 month_cols = c("INSJAX", "INSFEX", "INSMAX", "INSAPX", "INSMYX", "INSJUX", "INSJLX", "INSAUX", "INSSEX", "INSOCX", "INSNOX", "INSDEX")
 
-ddi <- read_ipums_ddi("data/meps_00010_2018to2023.xml")
+ddi <- read_ipums_ddi("data/meps_00012_2019to2023.xml")
 data <- read_ipums_micro(ddi) %>%
   filter(YEAR != 2018) %>%
   select(-INSMMX, -DUIDRD, -PIDRD, -PANELRD, -MEPSIDRD) %>%
-  #rename(ALLEXP = All) %>%
-  #mutate(ALLEXP = {
-  #  attr(ALLEXP, "label") <- "Sum of all medical expenditures"
-  #  ALLEXP}) %>%
   mutate(INSABLEMNS = rowSums(select(., all_of(month_cols)) != 0, na.rm = TRUE),
          INSDMNS = rowSums(select(., all_of(month_cols)) == 2, na.rm = TRUE)) %>%
   mutate(INSABLEMNS = {
