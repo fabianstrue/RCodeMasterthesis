@@ -19,6 +19,7 @@ cols_CHOEMINSRD = grep("^CHOEMINSRD_R", names(data_cl_wide), value = TRUE)
 cols_EMPHICOVRD = grep("^EMPHICOVRD_R", names(data_cl_wide), value = TRUE)
 cols_EHICOVRD = grep("^EHICOVRD_R", names(data_cl_wide), value = TRUE)
 cols_NUMEMPSRD = grep("^NUMEMPSRD_R", names(data_cl_wide), value = TRUE)
+cols_SLFEMPRD = grep("^SLFEMPRD_R", names(data_cl_wide), value = TRUE)
 
 data_cll = data_cl_wide %>%
   mutate(EMPSTAT = apply(pick(all_of(cols_EMPSTATRD)), 1, function(vals) {
@@ -52,7 +53,13 @@ data_cll = data_cl_wide %>%
     if (maxV < 0) return(NA_real_)
     return(maxV)
   })) %>%
-  select(-all_of(c(cols_EMPSTATRD, cols_CHOEMINSRD, cols_EMPHICOVRD, cols_EHICOVRD, cols_NUMEMPSRD))) %>%
+  mutate(SLFEMP = apply(pick(all_of(cols_SLFEMPRD)), 1, function(vals) {
+    vals = na.omit(vals)
+    if (any(vals == 2)) return(2) # 2 = Self employed
+    return(1)
+  }))  %>%
+  select(-all_of(c(cols_EMPSTATRD, cols_CHOEMINSRD, cols_EMPHICOVRD,
+                   cols_EHICOVRD, cols_NUMEMPSRD, cols_SLFEMPRD))) %>%
   mutate(
     SEX = factor(SEX, levels = c(1, 2), 
                      labels = c("Male", "Female")),
@@ -119,11 +126,12 @@ sum(is.na(data_cll$EXPSELFPAYSHR) & data_cll$INSSHR == 0)
 sum(data_cll$INSSHR == 0)
 
 
-# remove columns, that split spending by spurce (exept self spending)
+# remove columns, that split spending by spurce (except self spending)
 data_cll <- data_cll %>%
-  select(-EXPSRCPAY, -EXPOPUPAY, -EXPOPRPAY, -EXPPTRPAY, -EXPOTHPAY, -ALLEXPINSU,
-         -ALLEXPSELF, -EXPMCPAY, -EXPMAPAY, -EXPPRPAY, -EXPTRIPAY,
-         -EXPVAPAY, -EXPOFPAY, -EXPOLPAY, -EXPWCPAY, -EXPOSPAY)
+  select(-any_of(c("EXPSRCPAY", "EXPOPUPAY", "EXPOPRPAY", "EXPPTRPAY",
+                   "EXPOTHPAY", "ALLEXPINSU", "ALLEXPSELF", "EXPMCPAY",
+                   "EXPMAPAY", "XPPRPAY", "EXPTRIPAY", "EXPVAPAY",
+                   "EXPOFPAY", "EXPOLPAY", "EXPWCPAY", "EXPOSPAY")))
 
 
 # Save data locally
@@ -131,5 +139,6 @@ write_csv(data_cll, "data/data_cll.csv")
 write_csv(data_cll_stat, "data/data_cll_statistical_variables.csv")
 
 # Clean environment
-rm(cols_EMPSTATRD, cols_CHOEMINSRD, cols_EMPHICOVRD, cols_EHICOVRD, cols_NUMEMPSRD, data_cl_wide, data_cl)
+rm(cols_EMPSTATRD, cols_CHOEMINSRD, cols_EMPHICOVRD, cols_EHICOVRD,
+   cols_NUMEMPSRD, cols_SLFEMPRD, data_cl_wide, rd_vars, data_cl)
 gc()
