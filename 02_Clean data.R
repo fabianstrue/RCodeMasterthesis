@@ -1,5 +1,6 @@
 library(dplyr)
 library(haven)
+library(zoo)
 
 data_cl = data %>%
   mutate(across(where(haven::is.labelled), as.numeric)) %>%
@@ -8,7 +9,7 @@ data_cl = data %>%
   filter(!STUDENT %in% c(7, 9)) %>%
   filter(!EDUCYR %in% c(97, 98, 99)) %>%
   filter(!EMPSTATRD %in% c(9, 8, 7)) %>%
-  filter(!NUMEMPSRD %in% c(994, 997, 998, 999)) %>%
+  filter(!NUMEMPSRD %in% c(997, 998, 999)) %>%
   #filter(!CHOEMINSRD %in% c(4, 7, 8, 9)) %>%
   #filter(!EHICOVRD %in% c(7, 8, 9)) %>%
   #filter(!EMPHICOVRD %in% c(7, 8, 9)) %>%
@@ -19,8 +20,12 @@ data_cl = data %>%
          STUDENT = factor(
            ifelse(STUDENT %in% c(1, 2), "Student", "Not student"),
            levels = c("Not student", "Student")        # set reference level explicitly
-         ))
-
+         ))  %>%
+  arrange(MEPSID, YEAR, ROUNDRD) %>%
+  group_by(MEPSID) %>%
+  mutate(NUMEMPSRD = replace(NUMEMPSRD, NUMEMPSRD == 994, NA_real_),
+         NUMEMPSRD = zoo::na.locf(NUMEMPSRD, na.rm = FALSE)) %>%
+  ungroup()
 
 # data_cl = data %>%
 #   mutate(across(where(haven::is.labelled), as.numeric)) %>%
