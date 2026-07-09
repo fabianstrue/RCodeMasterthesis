@@ -161,6 +161,9 @@ svyby(~INSSHR, ~firm_bin, svy_des, svymean)
 svyby(~EXPTOT, ~firm_bin, svy_des, svyquantile,
                quantiles = 0.5, ci = TRUE)
 
+# Employment by bin
+svyby(~EMPSTAT, ~firm_bin, svy_des, svymean)
+
 # Proportion of population in each bin
 prop.table(svytable(~firm_bin, svy_des))
 table(svy_des$variables$firm_bin)

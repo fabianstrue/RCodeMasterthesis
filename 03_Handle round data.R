@@ -69,6 +69,7 @@ data_cll = data_cl_wide %>%
                                 "Doctorate degree", "Other degree", "NIU")),
     EMPSTAT = factor(EMPSTAT, levels = c(0, 1, 4), 
                      labels = c("NIU", "Employed", "Unemployed")),
+    EMPSTAT = replace(EMPSTAT, NUMEMPS == 0, "Unemployed"),
     CHOEMINS  = factor(CHOEMINS,  levels = c(0, 1, 2),  
                      labels = c("NIU", "No", "Yes")),
     EMPHICOV  = factor(EMPHICOV,  levels = c(0, 1, 2),  
