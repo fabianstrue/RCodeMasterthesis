@@ -18,12 +18,18 @@ weighted.mean(df_des$EXPTOT == 0, df_des$PERWEIGHT)
 bind_rows(
   df_des %>%
   group_by(INSSHR = as.character(INSSHR)) %>%
-  summarise(zero_share = weighted.mean(EXPTOT == 0, PERWEIGHT), n = n()),
+  summarise(zero_share = weighted.mean(EXPTOT == 0, PERWEIGHT),
+            n = n(),
+            sum_weight = sum(PERWEIGHT)),
   
   df_des %>%
     summarise(INSSHR = "Total",
-              zero_share = weighted.mean(EXPTOT == 0, PERWEIGHT), n = n())
-  )
+              zero_share = weighted.mean(EXPTOT == 0, PERWEIGHT),
+              n = n(),
+              sum_weight = sum(PERWEIGHT))
+  ) %>%
+  mutate(weight_share = sum_weight / sum_weight[INSSHR == "Total"]) %>%
+  select(-sum_weight)
 
 ## Table of most common Spending amounts
 head(sort(table(df_des$EXPTOT), decreasing = TRUE), 25)
@@ -181,7 +187,8 @@ ecdf_df <- df_des %>%
 
 ggplot(ecdf_df, aes(x = EXPTOT, y = F, colour = insurance)) +
   geom_step(direction = "hv") +
-  scale_x_sqrt(labels = scales::dollar) +
+  scale_x_sqrt(labels = scales::dollar,
+               breaks = c(0, 50000, 100000, 200000)) +
   coord_cartesian(xlim = c(0, 200000),
                   ylim = c(0, 1)) +
   labs(x = "Total medical spending", y = "Empirical CDF",
