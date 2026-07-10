@@ -1,5 +1,6 @@
 library(AER)
 library(dplyr)
+library(survey)
 setwd("C:/Users/fabia/Documents/#Köln/Uni/Masterarbeit/RCodeMasterthesis")
 plot_dir <- file.path(getwd(), "plots")
 if (!dir.exists(plot_dir)) dir.create(plot_dir)
@@ -38,7 +39,11 @@ set.seed(12)
 # Data preparation
 # ══════════════════════════════════════════════════════════════════════════════
 
-df = regular
+df = regular %>%
+  left_join(
+    data_cll_stat %>% select(MEPSID, YEAR, PSUPLD, STRATAPLD),
+    by = c("MEPSID", "YEAR")
+  )
 df$SEX     <- ifelse(df$SEX     == "Male",     1, 0)  # 1 = Male,     0 = Female
 df$STUDENT <- ifelse(df$STUDENT == "Student",  1, 0)  # 1 = Student,  0 = Not student
 df$EMPSTAT <- ifelse(df$EMPSTAT == "Employed", 1, 0)  # 1 = Employed, 0 = Unemployed
@@ -197,6 +202,23 @@ plot_cdf_ci <- function(file, x, y_un, y_ins, ci_un, ci_ins, title) {
   dev.off()
 }
 
+plot_alpha_ci <- function(file, x, main_est, ci_pw, ci_unif, title) {
+  pdf(file = file.path(plot_dir, file), width = 9, height = 6)
+  ylim <- range(ci_unif$lower, ci_unif$upper, na.rm = TRUE)
+  plot(x, main_est, lwd = 2, type = "l",
+       xlab = "sqrt(Total Expenditure)", ylab = expression(hat(alpha)[1](y)),
+       ylim = ylim, main = title,
+       cex = 1.5, cex.axis = 1.5, cex.lab = 1.5, cex.main = 1.5)
+  abline(h = 0, lty = 3, col = "grey50")
+  lines(x, ci_pw$upper,   lwd = 1, lty = 2)
+  lines(x, ci_pw$lower,   lwd = 1, lty = 2)
+  lines(x, ci_unif$upper, lwd = 1, lty = 3, col = "darkred")
+  lines(x, ci_unif$lower, lwd = 1, lty = 3, col = "darkred")
+  legend("topright", c("Pointwise 90%", "Uniform 90%"), lty = c(2, 3),
+         col = c("black", "darkred"))
+  dev.off()
+}
+
 plot_diff <- function(file, x, diff_main, ci_diff, title, ylim = c(-0.3, 0.3)) {
   pdf(file = file.path(plot_dir, file), width = 9, height = 6)
   plot(x, diff_main, lwd = 2, type = "l",
@@ -215,6 +237,8 @@ plot_diff <- function(file, x, diff_main, ci_diff, title, ylim = c(-0.3, 0.3)) {
 
 model_df = def_variables(df, target, endogen, instrument, controls, weight_var,
                          t_transform = "sqrt", weight_rescale = weight_rescaling)
+model_df$PSUPLD    <- df$PSUPLD
+model_df$STRATAPLD <- df$STRATAPLD
 model_df <- model_df[complete.cases(model_df), ]
 nn       <- nrow(model_df)
 n_ctrl   <- length(controls)
@@ -239,6 +263,53 @@ print(summary(ivmod, diagnostics = TRUE))
 
 n_coef_noIV <- length(linmod$coeff)    # intercept + controls + endo
 n_coef_IV   <- n_ctrl + 3              # intercept + controls + endo + Y2hat
+
+# ── Olea–Pflueger effective F ────────────────────────────────────────────
+design <- svydesign(ids = ~PSUPLD, strata = ~STRATAPLD,
+                    weights = ~PERWEIGHT, data = model_df, nest = TRUE)
+fs_svy <- svyglm(first_stage_formula, design = design, family = gaussian())
+pi_hat    <- coef(fs_svy)["inst"]
+se_robust <- sqrt(vcov(fs_svy)["inst", "inst"])
+F_eff     <- as.numeric((pi_hat / se_robust)^2)
+cat("Olea-Pflueger effective F:", F_eff, "\n")
+
+# ── First-stage residual histogram (LPM) ─────────────────────────────────
+fs_ols <- lm(first_stage_formula, data = model_df, weights = model_df[[weight_var]])
+
+pdf(file.path(plot_dir, "Plot_FirstStage_Residual_Hist_OLS.pdf"))
+hist(fs_ols$residuals, breaks = 50, freq = FALSE,
+     main = "LPM first-stage residuals", xlab = "Residual")
+dev.off()
+
+# ── Probit first stage (for link test + calibration) ─────────────────────
+fs_probit <- glm(first_stage_formula, family = quasibinomial(link = "probit"),
+                 data = model_df, weights = model_df[[weight_var]],
+                 control = glm.control(maxit = 100))
+
+# Link test: regress endo on xb and xb^2; significant xb^2 => link misspecified
+xb  <- predict(fs_probit, type = "link")
+xb2 <- xb^2
+linktest_df  <- data.frame(endo = model_df$endo, xb = xb, xb2 = xb2,
+                           .w = model_df[[weight_var]])
+linktest_mod <- glm(endo ~ xb + xb2, family = quasibinomial(link = "probit"),
+                    data = linktest_df, weights = .w,
+                    control = glm.control(maxit = 100))
+print(summary(linktest_mod))
+
+# Decile calibration check
+p_hat  <- pnorm(xb)
+decile <- cut(p_hat,
+              breaks = quantile(p_hat, probs = seq(0, 1, 0.1), na.rm = TRUE),
+              include.lowest = TRUE, labels = FALSE)
+
+calib_df <- model_df %>%
+  mutate(p_hat = p_hat, decile = decile) %>%
+  group_by(decile) %>%
+  summarise(n         = n(),
+            mean_pred = weighted.mean(p_hat, w = .data[[weight_var]]),
+            mean_obs  = weighted.mean(endo,  w = .data[[weight_var]]),
+            .groups = "drop")
+print(calib_df)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Main estimation on full sample
@@ -282,8 +353,40 @@ rear_un_IV    <- rearrange(thresholds, cdf_uninsured$IV,    u)
 rear_ins_noIV <- rearrange(thresholds, cdf_insured$nonIV,   u)
 rear_ins_IV   <- rearrange(thresholds, cdf_insured$IV,      u)
 
+# ── Isotonic vs rearrangement internal-coherence check ───────────────────
+coherence_stat <- function(thresholds, iso_yf, rearr_y) {
+  d <- abs(iso_yf - rearr_y)
+  list(max_abs_diff = max(d, na.rm = TRUE),
+       int_abs_diff = sum(d[-1] * diff(thresholds), na.rm = TRUE))  # right-Riemann
+}
+
+coherence <- list(
+  un_noIV  = coherence_stat(thresholds, iso_un_noIV$yf,  rear_un_noIV),
+  un_IV    = coherence_stat(thresholds, iso_un_IV$yf,    rear_un_IV),
+  ins_noIV = coherence_stat(thresholds, iso_ins_noIV$yf, rear_ins_noIV),
+  ins_IV   = coherence_stat(thresholds, iso_ins_IV$yf,   rear_ins_IV)
+)
+
+coherence_tab <- do.call(rbind, lapply(names(coherence), function(nm) {
+  data.frame(curve = nm,
+             max_abs_diff = coherence[[nm]]$max_abs_diff,
+             int_abs_diff = coherence[[nm]]$int_abs_diff)
+}))
+print(coherence_tab)
+
+# ── Reduced-form check ────────────────────────────────────────────────────
+rf_formula <- as.formula(paste("y ~", paste(c(controls, "inst"), collapse = " + ")))
+rf_mod <- lm(rf_formula, data = model_df, weights = model_df[[weight_var]])
+print(summary(rf_mod))
+rf_svy <- svyglm(rf_formula, design = design, family = gaussian())
+print(summary(rf_svy))
+
+rf_coef <- coef(summary(rf_mod))["inst", ]
+cat("Reduced-form coefficient on instrument:", rf_coef["Estimate"],
+    "(SE:", rf_coef["Std. Error"], ", t =", rf_coef["t value"], ")\n")
+
 save(betahatsnonIV, betahatsIV, cdf_uninsured, cdf_insured,
-     thresholds, n_thresholds,
+     thresholds, n_thresholds, coherence_tab,
      file = paste0("main_results_", first_stage_mode, ".RData"))
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -318,6 +421,7 @@ bs_ins_noIV  <- matrix(NA_real_, nrow = n_thresholds, ncol = B)
 bs_ins_IV    <- matrix(NA_real_, nrow = n_thresholds, ncol = B)
 bs_diff_noIV <- matrix(NA_real_, nrow = n_thresholds, ncol = B)
 bs_diff_IV   <- matrix(NA_real_, nrow = n_thresholds, ncol = B)
+bs_alpha     <- matrix(NA_real_, nrow = n_thresholds, ncol = B)
 
 for (b in seq_len(B)) { 
   idx  <- sample(seq_len(nn), replace = TRUE)
@@ -341,10 +445,12 @@ for (b in seq_len(B)) {
   bs_ins_IV[,    b] <- isoreg(thresholds, cdf_b_ins$IV)$yf
   bs_diff_noIV[, b] <- bs_ins_noIV[, b] - bs_un_noIV[, b]
   bs_diff_IV[,   b] <- bs_ins_IV[,   b] - bs_un_IV[,   b]
+  bs_alpha[,     b] <- probit_b$IV[, n_ctrl + 3]
   
   cat("Completed draw:", b, "\n")
   if (b %% 10 == 0) {
-    save(bs_un_noIV, bs_un_IV, bs_ins_noIV, bs_ins_IV, bs_diff_noIV, bs_diff_IV, 
+    save(bs_un_noIV, bs_un_IV, bs_ins_noIV, bs_ins_IV, bs_diff_noIV, bs_diff_IV,
+         bs_alpha,
          file = paste0("bootstrap_progress_", first_stage_mode, ".RData"))}
 }
 
@@ -359,6 +465,9 @@ main_ins_noIV <- iso_ins_noIV$yf
 main_ins_IV   <- iso_ins_IV$yf
 main_diff_noIV <- main_ins_noIV - main_un_noIV
 main_diff_IV   <- main_ins_IV   - main_un_IV
+main_alpha <- betahatsIV[, n_ctrl + 3]
+ci_alpha_pw   <- ci_pointwise(bs_alpha, alpha = 0.10)   # 90% bands per §4.4.2
+ci_alpha_unif <- ci_uniform(bs_alpha, main_alpha, alpha = 0.10)
 
 
 # 95% confidence bands pointwise
@@ -385,6 +494,11 @@ ci_uni <- list(
 # ══════════════════════════════════════════════════════════════════════════════
 # CI plots
 # ══════════════════════════════════════════════════════════════════════════════
+
+plot_alpha_ci(paste0("Plot_Alpha_CI_", first_stage_mode, ".pdf"),
+              thresholds, main_alpha,
+              ci_alpha_pw, ci_alpha_unif,
+              paste0("alpha-hat_1(y), ", 90, "% pointwise and uniform bands"))
 
 plot_cdf_ci(paste0("Plot_Isotonic_noIV_pwCI_", first_stage_mode, ".pdf"),
             thresholds, main_un_noIV, main_ins_noIV,
@@ -425,5 +539,5 @@ plot_diff(paste0("Plot_Difference_IV_uniCI_", first_stage_mode, ".pdf"),
           paste0("CDF Difference: Insured − Uninsured (IV / ASF), ", pct, "% uniform CI"))
 
 
-rm(u, b, Y2hat_b, dfBS, rear_un_noIV, rear_un_IV, rear_ins_noIV, rear_ins_IV)
+#rm(u, b, Y2hat_b, dfBS, rear_un_noIV, rear_un_IV, rear_ins_noIV, rear_ins_IV)
 

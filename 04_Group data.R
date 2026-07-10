@@ -11,5 +11,5 @@ regular = data_cll %>%
 
 #head(sort(table(elderly$INSSHR), decreasing = TRUE), 25)
 
-rm(data_cll, data_cll_stat)
+rm(data_cll)
 gc()
