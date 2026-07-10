@@ -1,6 +1,7 @@
 library(dplyr)
 library(tidyr)
 library(labelled)
+library(survey)
 
 stat_cols = c("PANEL", "PSUANN", "STRATANN", "PSUPLD", "STRATAPLD", "PANELYR", "RELYR", "PERWEIGHT", "SAQWEIGHT", "DIABWEIGHT", "SDOHWT")
 
@@ -82,7 +83,8 @@ data_cll = data_cl_wide %>%
     EHICOV   = "Held health insurance from current main job aggregated",
     NUMEMPS  = "N employees at firm aggregated"
    ) %>%
-  filter(!(EMPSTAT == "Employed" & NUMEMPS == 0))
+  filter(!(EMPSTAT == "Employed" & NUMEMPS == 0),
+         PERWEIGHT > 0)
 
 # EMPHICOV and EHICOV are almost perfectly collinear, thus I create a combination
 data_cll <- data_cll %>%
@@ -103,7 +105,7 @@ data_cll <- data_cll %>%
   ))
 
 data_cll_stat = data_cll %>%
-  select(MEPSID, all_of(stat_cols))
+  select(MEPSID, YEAR, all_of(stat_cols))
 data_cll = data_cll %>%
   select(-all_of(setdiff(stat_cols, "PERWEIGHT")))
 
