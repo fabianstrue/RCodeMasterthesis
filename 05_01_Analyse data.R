@@ -26,7 +26,7 @@ endogen          <- "INSSHR"
 instrument       <- "NUMEMPS"
 target           <- "EXPTOT"
 t_transform      <- "sqrt"
-first_stage_mode <- "Probit"   # "OLS" or "Probit"
+first_stage_mode <- "OLS"   # "OLS" or "Probit"
 weight_var       <- "PERWEIGHT"
 weight_rescaling <- TRUE
 n_thresholds     <- 500
@@ -282,22 +282,22 @@ hist(fs_ols$residuals, breaks = 50, freq = FALSE,
 dev.off()
 
 # ── Probit first stage (for link test + calibration) ─────────────────────
-fs_probit <- glm(first_stage_formula, family = quasibinomial(link = "probit"),
-                 data = model_df, weights = model_df[[weight_var]],
-                 control = glm.control(maxit = 100))
+fs_probit_svy <- svyglm(first_stage_formula, design = design,
+                        family = quasibinomial(link = "probit"))
 
 # Link test: regress endo on xb and xb^2; significant xb^2 => link misspecified
-xb  <- predict(fs_probit, type = "link")
-xb2 <- xb^2
-linktest_df  <- data.frame(endo = model_df$endo, xb = xb, xb2 = xb2,
-                           .w = model_df[[weight_var]])
-linktest_mod <- glm(endo ~ xb + xb2, family = quasibinomial(link = "probit"),
-                    data = linktest_df, weights = .w,
-                    control = glm.control(maxit = 100))
-print(summary(linktest_mod))
+xb <- predict(fs_probit_svy, type = "link")
+
+design <- update(design,
+                 xb  = as.numeric(xb),
+                 xb2 = as.numeric(xb)^2)
+
+linktest_svy <- svyglm(endo ~ xb + xb2, design = design,
+                       family = quasibinomial(link = "probit"))
+print(summary(linktest_svy))
 
 # Decile calibration check
-p_hat  <- pnorm(xb)
+p_hat  <- pnorm(as.numeric(xb))
 decile <- cut(p_hat,
               breaks = quantile(p_hat, probs = seq(0, 1, 0.1), na.rm = TRUE),
               include.lowest = TRUE, labels = FALSE)
