@@ -143,5 +143,6 @@ write_csv(data_cll_stat, "data/data_cll_statistical_variables.csv")
 
 # Clean environment
 rm(cols_EMPSTATRD, cols_CHOEMINSRD, cols_EMPHICOVRD, cols_EHICOVRD,
-   cols_NUMEMPSRD, cols_SLFEMPRD, data_cl_wide, rd_vars, data_cl)
+   cols_NUMEMPSRD, cols_SLFEMPRD, data_cl_wide, rd_vars, data, data_cl)
 gc()
+

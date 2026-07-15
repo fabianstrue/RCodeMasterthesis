@@ -1,6 +1,7 @@
 library(AER)
 library(dplyr)
 library(survey)
+options(survey.lonely.psu = "adjust")
 setwd("C:/Users/fabia/Documents/#Köln/Uni/Masterarbeit/RCodeMasterthesis")
 plot_dir <- file.path(getwd(), "plots")
 if (!dir.exists(plot_dir)) dir.create(plot_dir)
@@ -26,7 +27,7 @@ endogen          <- "INSSHR"
 instrument       <- "NUMEMPS"
 target           <- "EXPTOT"
 t_transform      <- "sqrt"
-first_stage_mode <- "OLS"   # "OLS" or "Probit"
+first_stage_mode <- "Probit"   # "OLS" or "Probit"
 weight_var       <- "PERWEIGHT"
 weight_rescaling <- TRUE
 n_thresholds     <- 500
@@ -453,6 +454,63 @@ for (b in seq_len(B)) {
          bs_alpha,
          file = paste0("bootstrap_progress_", first_stage_mode, ".RData"))}
 }
+
+qs   <- c(0.10, 0.25, 0.50, 0.75, 0.90)
+yq   <- quantile(model_df$y[model_df$y > 0], probs = qs, type = 1)
+idx  <- c(1, sapply(yq, function(v) which.min(abs(thresholds - v))))  # 1 = zero threshold
+
+extract <- data.frame(
+  threshold  = thresholds[idx],
+  un_noIV    = main_un_noIV[idx],   ins_noIV = main_ins_noIV[idx],
+  un_IV      = main_un_IV[idx],     ins_IV   = main_ins_IV[idx],
+  diff_IV    = main_diff_IV[idx],
+  diff_pw_lo = ci_pw$diff_IV$lower[idx],  diff_pw_hi = ci_pw$diff_IV$upper[idx],
+  diff_un_lo = ci_uni$diff_IV$lower[idx], diff_un_hi = ci_uni$diff_IV$upper[idx])
+print(extract, digits = 3)
+# ══════════════════════════════════════════════════════════════════════════════
+# Functional Hausman comparison: non-IV minus IV, per treatment arm
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Bootstrap draws of the Hausman difference
+bs_haus_un  <- bs_un_noIV  - bs_un_IV
+bs_haus_ins <- bs_ins_noIV - bs_ins_IV
+
+# Main estimates of the Hausman difference
+main_haus_un  <- main_un_noIV  - main_un_IV
+main_haus_ins <- main_ins_noIV - main_ins_IV
+
+# Bands (pointwise 95% per the methods text, uniform as a bonus)
+ci_haus_pw <- list(
+  un  = ci_pointwise(bs_haus_un,  alpha),
+  ins = ci_pointwise(bs_haus_ins, alpha)
+)
+ci_haus_uni <- list(
+  un  = ci_uniform(bs_haus_un,  main_haus_un,  alpha),
+  ins = ci_uniform(bs_haus_ins, main_haus_ins, alpha)
+)
+
+# Where does the pointwise band exclude zero?
+haus_reject_un  <- ci_haus_pw$un$lower  > 0 | ci_haus_pw$un$upper  < 0
+haus_reject_ins <- ci_haus_pw$ins$lower > 0 | ci_haus_pw$ins$upper < 0
+cat("Hausman pointwise rejections (uninsured):", sum(haus_reject_un),
+    "of", n_thresholds, "thresholds\n")
+cat("Hausman pointwise rejections (insured):  ", sum(haus_reject_ins),
+    "of", n_thresholds, "thresholds\n")
+
+# Plots
+plot_diff(paste0("Plot_Hausman_Uninsured_pwCI_", first_stage_mode, ".pdf"),
+          thresholds, main_haus_un, ci_haus_pw$un,
+          paste0("Functional Hausman: non-IV − IV (Uninsured), ",
+                 pct, "% pointwise CI"))
+
+plot_diff(paste0("Plot_Hausman_Insured_pwCI_", first_stage_mode, ".pdf"),
+          thresholds, main_haus_ins, ci_haus_pw$ins,
+          paste0("Functional Hausman: non-IV − IV (Insured), ",
+                 pct, "% pointwise CI"))
+
+save(main_haus_un, main_haus_ins, ci_haus_pw, ci_haus_uni,
+     haus_reject_un, haus_reject_ins,
+     file = paste0("hausman_results_", first_stage_mode, ".RData"))
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Confidence bands
